@@ -1,12 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
 
-// 程序的入口点
 func main() {
-	fmt.Println("Hello world!")
-	say("Hello Go!")
-}
-func say(message string) {
-	fmt.Println("You said: ", message)
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("请输入一些内容：")
+	input, _ := reader.ReadString('\n')
+	fmt.Println("你输入的内容是：", input)
 }
