@@ -208,7 +208,7 @@ func (l *Lexer) isDigit(ch uint8) bool {
 // 从当前位置开始，读取连续的字母、数字或下划线字符组成的字符串，作为标识符或关键字
 func (l *Lexer) readIdent() string {
 	position := l.readPos
-	for l.isLetter(l.ch) || l.isDigit(l.ch) || l.ch == '_' {
+	for l.isLetter(l.ch) || l.isDigit(l.ch) || l.ch == '_' || l.ch == '.' {
 		l.readChar()
 	}
 	return l.input[position-1 : l.readPos-1]
@@ -222,30 +222,18 @@ func (l *Lexer) peekChar() uint8 {
 	return uint8(l.input[l.readPos])
 }
 
-// 获取当前行号和列号的函数
-func (l *Lexer) getPositionInfo() (int, int) {
-	// 这里简单假设输入字符串是按行存储的，通过换行符来计算行号
-	// 列号则通过当前读取位置减去上一个换行符位置来计算（需要记录上一个换行符位置）
-
+// 获取当前行号的函数
+func (l *Lexer) getPositionInfo() int {
+	// 通过换行符来计算行号
 	lineNumber := 1
-	columnNumber := 1
-	lastNewlinePos := -1
 
-	for i, char := range l.input {
+	for _, char := range l.input {
 		if char == '\n' {
 			lineNumber++
-			lastNewlinePos = i
 		}
 	}
 
-	// 如果还未遇到换行符，列号就是当前读取位置 + 1
-	if lastNewlinePos == -1 {
-		columnNumber = l.position + 1
-	} else {
-		columnNumber = l.position - lastNewlinePos
-	}
-
-	return lineNumber, columnNumber
+	return lineNumber
 }
 
 // 这是词法分析器的核心函数，用于分析输入字符串并返回下一个词法单元（标记）
@@ -289,6 +277,16 @@ func (l *Lexer) NextToken() Token {
 				l.readChar()
 			}
 			token.Value = l.input[position-1 : l.readPos-1]
+			return token
+		} else if l.isLetter(l.ch) {
+			l.readChar()
+			token.Type = ILLEGAL
+			// 记录当前行号，以便提供更详细的错误信息
+			lineNumber := l.getPositionInfo()
+			for l.isLetter(l.ch) || l.isDigit(l.ch) {
+				l.readChar()
+			}
+			token.Value = fmt.Sprintf("非法字符 '%s' 在第 %d 行", l.input[position-1:l.readPos-1], lineNumber)
 			return token
 		} else {
 			token.Type = INT
@@ -599,9 +597,9 @@ func (l *Lexer) NextToken() Token {
 		token.Type = EOF
 	} else {
 		token.Type = ILLEGAL
-		// 记录当前行号和列号，以便提供更详细的错误信息
-		lineNumber, columnNumber := l.getPositionInfo()
-		token.Value = fmt.Sprintf("非法字符 '%s' 在第 %d 行，第 %d 列", string(l.ch), lineNumber, columnNumber)
+		// 记录当前行号，以便提供更详细的错误信息
+		lineNumber := l.getPositionInfo()
+		token.Value = fmt.Sprintf("非法字符 '%s' 在第 %d 行", string(l.ch), lineNumber)
 	}
 
 	l.readChar() // 读取下一个字符，为下一次分析做准备
